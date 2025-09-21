@@ -5,8 +5,10 @@ import datetime
 import json
 import os
 import calendar
-from aiohttp import web
+import aiohttp
 import asyncio
+from flask import Flask
+from threading import Thread
 
 # --- CONFIG ---
 EVENT_ID = 1348525255257231393   # 🔹 replace with your event ID
@@ -188,18 +190,30 @@ async def corememories_reminder():
                         f"⏰ {role.mention}, it's time to set the next Core Memories host and create the new channel!"
                     )
 
-# --- keep the bot alive
-async def handle(request):
-    return web.Response(text="Bot is alive!")
+app = Flask('')
 
-async def start_webserver():
-    app = web.Application()
-    app.add_routes([web.get("/", handle)])
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", 10000)  # Render assigns a PORT dynamically
-    await site.start()
-    print("🌐 Webserver started for UptimeRobot keep-alive")
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)  # Render uses 0.0.0.0
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+async def send_heartbeat():
+    url = "https://uptime.betterstack.com/api/v1/heartbeat/EUrA87axd9gkvwfpCz6qvtRS"
+    while True:
+        async with aiohttp.ClientSession() as session:
+            await session.get(url)  # "ping" Better Uptime
+        await asyncio.sleep(600)  # every 10 minutes
+
+@bot.event
+async def on_ready():
+    bot.loop.create_task(send_heartbeat())
+    print("Heartbeat Sent")
 
 # --- On Ready: Sync slash commands + backfill old reactions ---
 @bot.event
@@ -207,10 +221,7 @@ async def on_ready():
     guild = discord.Object(id=1265727385031020626)  # put your server ID here
     await bot.tree.sync(guild=guild)  # sync to just that server
     print(f"✅ Synced slash commands to guild {1265727385031020626}")
-    print(f"✅ Bot is ready! Logged in as {bot.user} (id={bot.user.id})")
-
-    # Start webserver
-    asyncio.create_task(start_webserver())
+    print(f"✅ Bot is ready! Logged in as {bot.user} (id={bot.user.id})")\
 
     # Backfill existing reactions
     for g in bot.guilds:
