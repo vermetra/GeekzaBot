@@ -232,6 +232,6 @@ async def on_ready():
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not TOKEN:
-    raise ValueError("⚠️ No Discord token found! Make sure DISCORD_TOKEN is set in Render environment variables.")
+    raise ValueError("⚠️ No Discord token found! Make sure DISCORD_TOKEN is set in Render environment variables. please!")
 
 bot.run(TOKEN)
