@@ -5,7 +5,8 @@ import datetime
 import json
 import os
 import calendar
-from zoneinfo import ZoneInfo
+from aiohttp import web
+import asyncio
 
 # --- CONFIG ---
 EVENT_ID = 1348525255257231393   # 🔹 replace with your event ID
@@ -187,6 +188,19 @@ async def corememories_reminder():
                         f"⏰ {role.mention}, it's time to set the next Core Memories host and create the new channel!"
                     )
 
+# --- keep the bot alive
+async def handle(request):
+    return web.Response(text="Bot is alive!")
+
+async def start_webserver():
+    app = web.Application()
+    app.add_routes([web.get("/", handle)])
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", 10000)  # Render assigns a PORT dynamically
+    await site.start()
+    print("🌐 Webserver started for UptimeRobot keep-alive")
+
 # --- On Ready: Sync slash commands + backfill old reactions ---
 @bot.event
 async def on_ready():
@@ -194,6 +208,9 @@ async def on_ready():
     await bot.tree.sync(guild=guild)  # sync to just that server
     print(f"✅ Synced slash commands to guild {1265727385031020626}")
     print(f"✅ Bot is ready! Logged in as {bot.user} (id={bot.user.id})")
+
+    # Start webserver
+    asyncio.create_task(start_webserver())
 
     # Backfill existing reactions
     for g in bot.guilds:
@@ -210,7 +227,6 @@ async def on_ready():
                                 user_values[target_user_id] = user_values.get(target_user_id, 0) + reaction_values[key]
             except (discord.Forbidden, discord.HTTPException):
                 continue
-
 
 # --- Run Bot ---
 bot.run("TOKEN")
